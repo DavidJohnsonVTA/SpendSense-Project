@@ -1,0 +1,20 @@
+keyword,category,summary_group
+milk,Groceries,Total Food
+egg,Groceries,Total Food
+bread,Groceries,Total Food
+banana,Groceries,Total Food
+apple,Groceries,Total Food
+coffee,Dining Out,Total Food
+latte,Dining Out,Total Food
+burger,Dining Out,Total Food
+pizza,Dining Out,Total Food
+detergent,Household,Essentials
+paper towel,Household,Essentials
+soap,Household,Essentials
+shampoo,Personal Care,Lifestyle
+notebook,School,School
+binder,School,School
+pen,School,School
+gas,Transportation,Essentials
+uber,Transportation,Essentials
+lyft,Transportation,Essentials

@@ -1,0 +1,6 @@
+receipt_id,date,merchant,subtotal,tax,tip,total,payment_method,notes,image_filename,created_at
+sample-001,2026-01-02,Trader Joe's,7.78,0.00,0.00,7.78,Credit,,sample,2026-01-02T12:00:00
+sample-002,2026-01-06,Target,15.98,1.40,0.00,17.38,Credit,,sample,2026-01-06T12:00:00
+sample-003,2026-01-08,Chipotle,12.75,1.11,0.00,13.86,Debit,,sample,2026-01-08T12:00:00
+sample-004,2026-01-14,Chevron,45.00,0.00,0.00,45.00,Credit,,sample,2026-01-14T12:00:00
+sample-005,2026-01-18,Target,15.48,1.35,0.00,16.83,Credit,,sample,2026-01-18T12:00:00

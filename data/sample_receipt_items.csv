@@ -1,0 +1,9 @@
+receipt_id,date,merchant,item_name,item_price,category,summary_group,confidence,user_corrected
+sample-001,2026-01-02,Trader Joe's,Milk,4.29,Groceries,Total Food,0.95,False
+sample-001,2026-01-02,Trader Joe's,Bread,3.49,Groceries,Total Food,0.94,False
+sample-002,2026-01-06,Target,Laundry Detergent,12.99,Household,Essentials,0.90,False
+sample-002,2026-01-06,Target,Notebook,2.99,School,School,0.87,False
+sample-003,2026-01-08,Chipotle,Burrito Bowl,12.75,Dining Out,Total Food,0.96,False
+sample-004,2026-01-14,Chevron,Gas,45.00,Transportation,Essentials,0.93,False
+sample-005,2026-01-18,Target,Paper Towels,8.99,Household,Essentials,0.90,False
+sample-005,2026-01-18,Target,Shampoo,6.49,Personal Care,Lifestyle,0.88,False
