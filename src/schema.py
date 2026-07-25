@@ -1,5 +1,9 @@
-from typing import List, Optional
-from pydantic import BaseModel, Field, field_validator
+from __future__ import annotations
+
+from typing import Optional
+
+from pydantic import BaseModel, Field
+
 
 CATEGORIES = [
     "Groceries",
@@ -15,43 +19,31 @@ CATEGORIES = [
     "Miscellaneous",
 ]
 
-SUMMARY_GROUPS = {
-    "Groceries": "Total Food",
-    "Dining Out": "Total Food",
-    "Household": "Essentials",
-    "Transportation": "Essentials",
-    "Bills": "Essentials",
-    "Health": "Essentials",
-    "School": "School",
-    "Personal Care": "Lifestyle",
-    "Entertainment": "Lifestyle",
-    "Clothing": "Lifestyle",
-    "Miscellaneous": "Miscellaneous",
-}
+
+SUMMARY_GROUPS = [
+    "Food",
+    "Essentials",
+    "Lifestyle",
+    "School",
+    "Other",
+]
+
 
 class ReceiptItem(BaseModel):
-    name: str = Field(description="Item name from the receipt")
-    price: float = Field(ge=0, description="Item price as a positive number")
+    name: str = Field(default="Unknown Item")
+    price: float = Field(default=0.0)
     category: str = Field(default="Miscellaneous")
-    confidence: float = Field(default=0.5, ge=0, le=1)
+    summary_group: str = Field(default="Other")
+    confidence: float = Field(default=0.5)
 
-    @field_validator("category")
-    @classmethod
-    def valid_category(cls, value: str) -> str:
-        return value if value in CATEGORIES else "Miscellaneous"
 
-class ReceiptData(BaseModel):
-    merchant: str = "Unknown Merchant"
-    date: Optional[str] = Field(default=None, description="ISO format date YYYY-MM-DD if visible")
-    items: List[ReceiptItem] = Field(default_factory=list)
-    subtotal: float = 0.0
-    tax: float = 0.0
-    tip: float = 0.0
-    total: float = 0.0
+class Receipt(BaseModel):
+    merchant: str = Field(default="Unknown Merchant")
+    date: Optional[str] = None
+    items: list[ReceiptItem] = Field(default_factory=list)
+    subtotal: float = Field(default=0.0)
+    tax: float = Field(default=0.0)
+    tip: float = Field(default=0.0)
+    total: float = Field(default=0.0)
     payment_method: Optional[str] = None
-    notes: Optional[str] = None
-
-    @field_validator("subtotal", "tax", "tip", "total")
-    @classmethod
-    def non_negative_money(cls, value: float) -> float:
-        return max(float(value or 0), 0)
+    notes: str = Field(default="")
