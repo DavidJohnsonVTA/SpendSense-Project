@@ -1,6 +1,7 @@
 from __future__ import annotations
 import pandas as pd
 import streamlit as st
+import os
 from src.ai_extract import extract_receipt_from_image, demo_receipt
 from src.categorize import categorize_item, load_rules
 from src.dashboard import render_dashboard
@@ -25,7 +26,20 @@ with st.sidebar:
         6. Monthly summary
         """
     )
-    use_demo = st.toggle("Use demo receipt instead of API", value=False)
+st.divider()
+st.subheader("Admin")
+
+if st.button("Clear local CSV cache", key="clear_local_csv_cache"):
+    for path in ["data/receipts.csv", "data/receipt_items.csv"]:
+        try:
+            if os.path.exists(path):
+                os.remove(path)
+        except Exception as exc:
+            st.warning(f"Could not delete {path}: {exc}")
+
+    st.success("Local CSV cache cleared. Reboot or refresh the app.")
+    
+    use_demo = st.toggle("Use demo receipt instead of API", value=False)    
 
 upload_tab, dashboard_tab, data_tab = st.tabs(["Scan receipt", "Dashboard", "Saved data"])
 
