@@ -4,19 +4,50 @@ import os
 from typing import Dict, List
 
 import gspread
+import streamlit as st
 from google.oauth2.service_account import Credentials
 
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 
+def _get_secret(name: str, default: str | None = None) -> str | None:
+    try:
+        return st.secrets.get(name, default)
+    except Exception:
+        return os.getenv(name, default)
+
+
 def _get_client():
+    """
+    Works in two environments:
+
+    Local:
+      Uses GOOGLE_APPLICATION_CREDENTIALS from .env, pointing to a local JSON file.
+
+    Streamlit Cloud:
+      Uses [gcp_service_account] from Streamlit Secrets.
+    """
+
+    # Streamlit Cloud path
+    try:
+        if "gcp_service_account" in st.secrets:
+            service_account_info = dict(st.secrets["gcp_service_account"])
+            credentials = Credentials.from_service_account_info(
+                service_account_info,
+                scopes=SCOPES,
+            )
+            return gspread.authorize(credentials)
+    except Exception:
+        pass
+
+    # Local development path
     credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
 
     if not credentials_path:
         raise RuntimeError(
-            "Missing GOOGLE_APPLICATION_CREDENTIALS. "
-            "Set it to the path of your Google service account JSON file."
+            "Missing Google credentials. Locally, set GOOGLE_APPLICATION_CREDENTIALS "
+            "in .env. On Streamlit Cloud, add [gcp_service_account] to Secrets."
         )
 
     credentials = Credentials.from_service_account_file(
@@ -27,12 +58,11 @@ def _get_client():
 
 
 def _open_spreadsheet():
-    spreadsheet_id = os.getenv("SPENDSENSE_SHEET_ID")
+    spreadsheet_id = _get_secret("SPENDSENSE_SHEET_ID")
 
     if not spreadsheet_id:
         raise RuntimeError(
-            "Missing SPENDSENSE_SHEET_ID. "
-            "Set it to your Google Sheet ID."
+            "Missing SPENDSENSE_SHEET_ID. Add it to .env locally or Streamlit Secrets."
         )
 
     client = _get_client()
