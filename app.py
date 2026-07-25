@@ -7,10 +7,7 @@ from src.dashboard import render_dashboard
 from src.schema import CATEGORIES
 from src.storage import load_items, load_receipts, save_receipt
 from src.validate import validate_receipt_totals
-<<<<<<< HEAD
-=======
 from src.google_sheets_storage import append_receipt, append_receipt_items
->>>>>>> 22016ea (Add Google Sheets sync for saved receipts)
 
 st.set_page_config(page_title="SpendSense", page_icon="🧾", layout="wide")
 st.title("SpendSense: AI Receipt Scanner & Expense Dashboard")
@@ -99,14 +96,12 @@ with upload_tab:
             st.warning(warning)
 
         save_disabled = edited_df.empty
-<<<<<<< HEAD
         if st.button("Save approved receipt", disabled=save_disabled):
             image_name = uploaded_file.name if uploaded_file else "demo"
             receipt_id = save_receipt(receipt, edited_df, image_name)
             st.success(f"Saved receipt {receipt_id}. Open the Dashboard tab to see updated totals.")
             del st.session_state["receipt"]
 
-=======
 
         if st.button("Save approved receipt", disabled=save_disabled):
             image_name = uploaded_file.name if uploaded_file else "demo"
@@ -159,7 +154,6 @@ with upload_tab:
                 )
 
             del st.session_state["receipt"]
->>>>>>> 22016ea (Add Google Sheets sync for saved receipts)
 with dashboard_tab:
     render_dashboard(load_items(use_sample_if_empty=True))
 
