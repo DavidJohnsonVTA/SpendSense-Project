@@ -7,6 +7,10 @@ from src.dashboard import render_dashboard
 from src.schema import CATEGORIES
 from src.storage import load_items, load_receipts, save_receipt
 from src.validate import validate_receipt_totals
+<<<<<<< HEAD
+=======
+from src.google_sheets_storage import append_receipt, append_receipt_items
+>>>>>>> 22016ea (Add Google Sheets sync for saved receipts)
 
 st.set_page_config(page_title="SpendSense", page_icon="🧾", layout="wide")
 st.title("SpendSense: AI Receipt Scanner & Expense Dashboard")
@@ -95,12 +99,67 @@ with upload_tab:
             st.warning(warning)
 
         save_disabled = edited_df.empty
+<<<<<<< HEAD
         if st.button("Save approved receipt", disabled=save_disabled):
             image_name = uploaded_file.name if uploaded_file else "demo"
             receipt_id = save_receipt(receipt, edited_df, image_name)
             st.success(f"Saved receipt {receipt_id}. Open the Dashboard tab to see updated totals.")
             del st.session_state["receipt"]
 
+=======
+
+        if st.button("Save approved receipt", disabled=save_disabled):
+            image_name = uploaded_file.name if uploaded_file else "demo"
+
+            # Save locally to CSV first
+            receipt_id = save_receipt(receipt, edited_df, image_name)
+
+            # Build the same receipt row for Google Sheets
+            receipt_row = {
+                "receipt_id": receipt_id,
+                "date": receipt.get("date", ""),
+                "merchant": receipt.get("merchant", "Unknown Merchant"),
+                "subtotal": float(receipt.get("subtotal", 0) or 0),
+                "tax": float(receipt.get("tax", 0) or 0),
+                "tip": float(receipt.get("tip", 0) or 0),
+                "total": float(receipt.get("total", 0) or 0),
+                "payment_method": receipt.get("payment_method", ""),
+                "notes": receipt.get("notes", ""),
+                "image_filename": image_name,
+                "created_at": pd.Timestamp.now().isoformat(),
+            }
+
+            # Build item rows for Google Sheets
+            item_rows = []
+            for index, item in edited_df.reset_index(drop=True).iterrows():
+                item_rows.append({
+                    "item_id": f"{receipt_id}-{index + 1}",
+                    "receipt_id": receipt_id,
+                    "date": receipt.get("date", ""),
+                    "merchant": receipt.get("merchant", "Unknown Merchant"),
+                    "item_name": item.get("item_name", "Unknown Item"),
+                    "item_price": float(item.get("item_price", 0) or 0),
+                    "category": item.get("category", "Miscellaneous"),
+                    "summary_group": item.get("summary_group", "Other"),
+                    "confidence": float(item.get("confidence", 0.5) or 0.5),
+                    "user_corrected": bool(item.get("user_corrected", False)),
+                })
+
+            # Save externally to Google Sheets
+            try:
+                append_receipt(receipt_row)
+                append_receipt_items(item_rows)
+                st.success(
+                    f"Saved receipt {receipt_id} locally and to Google Sheets. "
+                    "Open the Dashboard tab to see updated totals."
+                )
+            except Exception as exc:
+                st.warning(
+                    f"Saved receipt {receipt_id} locally, but Google Sheets sync failed: {exc}"
+                )
+
+            del st.session_state["receipt"]
+>>>>>>> 22016ea (Add Google Sheets sync for saved receipts)
 with dashboard_tab:
     render_dashboard(load_items(use_sample_if_empty=True))
 

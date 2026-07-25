@@ -5,3 +5,7 @@ __pycache__/
 data/receipts.csv
 data/receipt_items.csv
 data/uploads/
+<<<<<<< HEAD
+=======
+*.json
+>>>>>>> 22016ea (Add Google Sheets sync for saved receipts)

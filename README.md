@@ -45,6 +45,56 @@ Run tests:
 ```bash
 pytest
 ```
+<<<<<<< HEAD
+=======
+
+## Build stages
+
+### Stage 1: Dashboard from sample data
+
+Run the app and open the Dashboard tab. The app will show sample data until you save your first real receipt.
+
+Goal: prove the monthly summary, category totals, merchant chart, and weekly trend work before adding AI.
+
+### Stage 2: Receipt upload UI
+
+Use the Scan receipt tab to upload a PNG/JPG/WebP receipt image.
+
+Goal: prove the user can upload a receipt and see it in the app.
+
+### Stage 3: AI receipt extraction
+
+Set `GEMINI_API_KEY` in `.env`, upload a receipt, and click Extract receipt data.
+
+Goal: Gemini returns merchant, date, item names, prices, categories, subtotal, tax, tip, and total.
+
+### Stage 4: Human review
+
+Use the editable table to fix incorrect item names, prices, or categories.
+
+Goal: nothing gets saved until the user approves it.
+
+### Stage 5: Save to CSV
+
+Click Save approved receipt. The app writes to:
+
+- `data/receipts.csv`
+- `data/receipt_items.csv`
+
+Goal: turn messy receipt data into a reusable dataset.
+
+### Stage 6: Monthly dashboard
+
+Open the Dashboard tab and review monthly spending.
+
+Goal: see totals by category, merchant, total food, groceries, dining out, and trends.
+
+## Future improvements
+
+- Google Sheets sync
+- Budget targets by category
+- User accounts
+>>>>>>> 22016ea (Add Google Sheets sync for saved receipts)
 - Better OCR fallback
 - Category learning from user corrections
 - Export monthly report as PDF
