@@ -1,53 +1,201 @@
 from __future__ import annotations
+
 import pandas as pd
 import streamlit as st
-from .summarize import monthly_summary_text
 
-def prepare_items(items: pd.DataFrame) -> pd.DataFrame:
-    if items.empty:
-        return items
-    items = items.copy()
-    items["date"] = pd.to_datetime(items["date"], errors="coerce")
-    items["item_price"] = pd.to_numeric(items["item_price"], errors="coerce").fillna(0)
-    items["month"] = items["date"].dt.to_period("M").astype(str)
-    return items.dropna(subset=["date"])
+from src.summarize import build_monthly_summary
 
-def render_dashboard(items: pd.DataFrame) -> None:
+
+def _prepare_items_df(items_df: pd.DataFrame) -> pd.DataFrame:
+    df = items_df.copy()
+
+    if df.empty:
+        return df
+
+    # Ensure dates work correctly
+    if "date" in df.columns:
+        df["date"] = pd.to_datetime(df["date"], errors="coerce")
+
+    # Convert price columns to numbers
+    if "item_price" in df.columns:
+        df["item_price"] = pd.to_numeric(df["item_price"], errors="coerce").fillna(0)
+
+    if "allocated_price" in df.columns:
+        df["allocated_price"] = pd.to_numeric(
+            df["allocated_price"], errors="coerce"
+        )
+
+        # If allocated_price exists but is blank for old rows, fall back to item_price
+        df["dashboard_amount"] = df["allocated_price"].fillna(df.get("item_price", 0))
+    else:
+        df["dashboard_amount"] = df.get("item_price", 0)
+
+    df["dashboard_amount"] = pd.to_numeric(
+        df["dashboard_amount"], errors="coerce"
+    ).fillna(0)
+
+    # Ensure expected text columns exist
+    for col in ["category", "summary_group", "merchant", "item_name"]:
+        if col not in df.columns:
+            df[col] = "Unknown"
+        df[col] = df[col].fillna("Unknown").astype(str)
+
+    return df
+
+
+def render_dashboard(items_df: pd.DataFrame) -> None:
     st.header("Monthly Expense Dashboard")
-    items = prepare_items(items)
-    if items.empty:
-        st.info("No saved data yet. Upload a receipt or use the sample CSV files included in data/.")
+
+    if items_df is None or items_df.empty:
+        st.info("No receipt item data available yet.")
         return
 
-    months = sorted(items["month"].unique(), reverse=True)
-    selected_month = st.selectbox("Month", months)
-    month_items = items[items["month"] == selected_month].copy()
+    df = _prepare_items_df(items_df)
 
-    total = month_items["item_price"].sum()
-    food = month_items.loc[month_items["summary_group"] == "Total Food", "item_price"].sum()
-    groceries = month_items.loc[month_items["category"] == "Groceries", "item_price"].sum()
-    dining = month_items.loc[month_items["category"] == "Dining Out", "item_price"].sum()
+    if df.empty:
+        st.info("No receipt item data available yet.")
+        return
+
+    # Month filter
+    if "date" in df.columns and df["date"].notna().any():
+        df["month"] = df["date"].dt.to_period("M").astype(str)
+        months = sorted(df["month"].dropna().unique(), reverse=True)
+
+        selected_month = st.selectbox(
+            "Select month",
+            months,
+            index=0,
+            key="dashboard_month_selector",
+        )
+
+        month_df = df[df["month"] == selected_month].copy()
+    else:
+        selected_month = "All data"
+        month_df = df.copy()
+
+    if month_df.empty:
+        st.info("No data found for the selected month.")
+        return
+
+    total_spent = float(month_df["dashboard_amount"].sum())
+
+    food_df = month_df[
+        month_df["category"].isin(["Groceries", "Dining Out"])
+        | month_df["summary_group"].eq("Food")
+    ]
+    total_food = float(food_df["dashboard_amount"].sum())
+
+    groceries = float(
+        month_df.loc[month_df["category"] == "Groceries", "dashboard_amount"].sum()
+    )
+    dining_out = float(
+        month_df.loc[month_df["category"] == "Dining Out", "dashboard_amount"].sum()
+    )
+
+    unique_merchants = month_df["merchant"].nunique()
 
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Total spending", f"${total:,.2f}")
-    c2.metric("Total food", f"${food:,.2f}")
+    c1.metric("Total spent", f"${total_spent:,.2f}")
+    c2.metric("Total food", f"${total_food:,.2f}")
     c3.metric("Groceries", f"${groceries:,.2f}")
-    c4.metric("Dining out", f"${dining:,.2f}")
+    c4.metric("Dining out", f"${dining_out:,.2f}")
 
+    st.caption(
+        "Dashboard totals use `allocated_price` when available, so item category totals "
+        "add up to the final charged receipt total instead of the pre-tax/pre-discount subtotal."
+    )
+
+    st.divider()
+
+    # Category totals
     st.subheader("Spending by category")
-    category_totals = month_items.groupby("category")["item_price"].sum().sort_values(ascending=False)
-    st.bar_chart(category_totals)
+    category_totals = (
+        month_df.groupby("category", as_index=False)["dashboard_amount"]
+        .sum()
+        .sort_values("dashboard_amount", ascending=False)
+    )
 
+    st.bar_chart(
+        category_totals.set_index("category")["dashboard_amount"],
+        use_container_width=True,
+    )
+
+    st.dataframe(
+        category_totals.rename(columns={"dashboard_amount": "amount"}),
+        use_container_width=True,
+    )
+
+    # Summary group totals
+    st.subheader("Spending by summary group")
+    group_totals = (
+        month_df.groupby("summary_group", as_index=False)["dashboard_amount"]
+        .sum()
+        .sort_values("dashboard_amount", ascending=False)
+    )
+
+    st.bar_chart(
+        group_totals.set_index("summary_group")["dashboard_amount"],
+        use_container_width=True,
+    )
+
+    # Merchant totals
     st.subheader("Spending by merchant")
-    merchant_totals = month_items.groupby("merchant")["item_price"].sum().sort_values(ascending=False).head(10)
-    st.bar_chart(merchant_totals)
+    merchant_totals = (
+        month_df.groupby("merchant", as_index=False)["dashboard_amount"]
+        .sum()
+        .sort_values("dashboard_amount", ascending=False)
+    )
 
-    st.subheader("Weekly trend")
-    weekly = month_items.set_index("date").resample("W")["item_price"].sum()
-    st.line_chart(weekly)
+    st.dataframe(
+        merchant_totals.rename(columns={"dashboard_amount": "amount"}),
+        use_container_width=True,
+    )
 
-    st.subheader("Plain-English summary")
-    st.write(monthly_summary_text(month_items, selected_month))
+    # Weekly trend
+    if "date" in month_df.columns and month_df["date"].notna().any():
+        st.subheader("Weekly spending trend")
 
-    with st.expander("View itemized data"):
-        st.dataframe(month_items.drop(columns=["month"], errors="ignore"), use_container_width=True)
+        weekly = (
+            month_df.set_index("date")
+            .resample("W")["dashboard_amount"]
+            .sum()
+            .reset_index()
+        )
+
+        weekly["week"] = weekly["date"].dt.strftime("%Y-%m-%d")
+
+        st.line_chart(
+            weekly.set_index("week")["dashboard_amount"],
+            use_container_width=True,
+        )
+
+    # Top items
+    st.subheader("Largest item-level charges")
+    top_items = month_df.sort_values("dashboard_amount", ascending=False).head(10)
+
+    display_cols = [
+        "date",
+        "merchant",
+        "item_name",
+        "category",
+        "item_price",
+        "dashboard_amount",
+    ]
+
+    existing_cols = [col for col in display_cols if col in top_items.columns]
+
+    st.dataframe(
+        top_items[existing_cols].rename(
+            columns={
+                "item_price": "original_item_price",
+                "dashboard_amount": "dashboard_amount_allocated",
+            }
+        ),
+        use_container_width=True,
+    )
+
+    st.divider()
+
+    st.subheader("AI-style monthly summary")
+    summary = build_monthly_summary(month_df, amount_column="dashboard_amount")
+    st.write(summary)

@@ -232,6 +232,19 @@ with upload_tab:
             # Build item rows for Google Sheets
             item_rows = []
 
+            item_subtotal = float(edited_df["item_price"].sum() or 0)
+            receipt_total = float(receipt.get("total", 0) or 0)
+
+            if item_subtotal > 0 and receipt_total > 0:
+                allocation_factor = receipt_total / item_subtotal
+            else:
+                allocation_factor = 1.0
+
+            for index, item in edited_df.reset_index(drop=True).iterrows():
+                item_price = float(item.get("item_price", 0) or 0)
+                allocated_price = round(item_price * allocation_factor, 2)
+
+
             for index, item in edited_df.reset_index(drop=True).iterrows():
                 item_rows.append(
                     {
@@ -244,9 +257,8 @@ with upload_tab:
                         "category": item.get("category", "Miscellaneous"),
                         "summary_group": item.get("summary_group", "Other"),
                         "confidence": float(item.get("confidence", 0.5) or 0.5),
-                        "user_corrected": bool(
-                            item.get("user_corrected", False)
-                        ),
+                        "user_corrected": bool(item.get("user_corrected", False)),
+                        "allocated_price": allocated_price,
                     }
                 )
 
