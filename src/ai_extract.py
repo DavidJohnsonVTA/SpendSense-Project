@@ -28,13 +28,13 @@ Return ONLY valid JSON. Do not include markdown, commentary, or explanation.
 
 Important accounting rules:
 - The field "subtotal" should be the pre-tax or pre-adjustment subtotal when visible.
-- The field "total" must be the final charged amount, final amount paid, or card charge.
-- If the receipt shows both a subtotal and a final total, DO NOT use subtotal as total.
-- If discounts, coupons, rewards, gift cards, tax, bottle deposits, fees, or tips appear,
+- The field "total" must be the final charged amount, final amount paid, card charge, or balance paid.
+- If the receipt shows both subtotal and final total, DO NOT use subtotal as total.
+- If discounts, coupons, rewards, gift cards, tax, deposits, fees, or tips appear,
   the "total" field should reflect the final amount actually paid after those adjustments.
 - If multiple possible totals appear, choose the amount closest to "amount paid",
   "total", "card charge", "charged", "payment", or "balance due".
-- Item prices should be the visible item-level prices before final receipt-level allocation.
+- Item prices should be visible item-level prices before final receipt-level allocation.
 - If item-level discounts are visible, use the discounted item price when clear.
 - If an item is unreadable, include your best guess and lower confidence.
 
@@ -57,19 +57,6 @@ Use these summary groups:
 - Lifestyle
 - School
 - Other
-
-Category guidance:
-- Groceries: grocery items, snacks, drinks from grocery/retail stores, ingredients
-- Dining Out: restaurants, cafes, fast food, prepared meals from restaurants
-- Household: cleaning supplies, paper towels, detergent, home goods
-- Transportation: gas, transit, parking, rideshare
-- School: notebooks, textbooks, supplies, academic materials
-- Health: pharmacy, medicine, first aid
-- Personal Care: shampoo, deodorant, skincare, hygiene
-- Entertainment: movies, games, events, hobbies
-- Clothing: clothes, shoes, accessories
-- Bills: utilities, subscriptions, recurring payments
-- Miscellaneous: anything unclear
 
 Required JSON shape:
 {
@@ -207,7 +194,9 @@ def extract_receipt_from_image(image_bytes: bytes, mime_type: str) -> Receipt:
             return Receipt.model_validate(data)
 
         except (json.JSONDecodeError, ValidationError, ValueError) as exc:
-            raise RuntimeError(f"Could not parse receipt data from model output: {exc}") from exc
+            raise RuntimeError(
+                f"Could not parse receipt data from model output: {exc}"
+            ) from exc
 
         except Exception as exc:
             model_errors.append(f"{model_name}: {exc}")

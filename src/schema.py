@@ -29,6 +29,21 @@ SUMMARY_GROUPS = [
 ]
 
 
+CATEGORY_TO_SUMMARY_GROUP = {
+    "Groceries": "Food",
+    "Dining Out": "Food",
+    "Household": "Essentials",
+    "Transportation": "Essentials",
+    "Health": "Essentials",
+    "Bills": "Essentials",
+    "Personal Care": "Lifestyle",
+    "Entertainment": "Lifestyle",
+    "Clothing": "Lifestyle",
+    "School": "School",
+    "Miscellaneous": "Other",
+}
+
+
 class ReceiptItem(BaseModel):
     name: str = Field(default="Unknown Item")
     price: float = Field(default=0.0)

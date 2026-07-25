@@ -13,23 +13,19 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 def _get_secret(name: str, default: str | None = None) -> str | None:
     try:
-        return st.secrets.get(name, default)
+        return st.secrets.get(name, os.getenv(name, default))
     except Exception:
         return os.getenv(name, default)
 
 
 def _get_client():
     """
-    Works in two environments:
-
     Local:
-      Uses GOOGLE_APPLICATION_CREDENTIALS from .env, pointing to a local JSON file.
+      Uses GOOGLE_APPLICATION_CREDENTIALS from .env.
 
     Streamlit Cloud:
       Uses [gcp_service_account] from Streamlit Secrets.
     """
-
-    # Streamlit Cloud path
     try:
         if "gcp_service_account" in st.secrets:
             service_account_info = dict(st.secrets["gcp_service_account"])
@@ -41,7 +37,6 @@ def _get_client():
     except Exception:
         pass
 
-    # Local development path
     credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
 
     if not credentials_path:

@@ -12,29 +12,24 @@ def _prepare_items_df(items_df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return df
 
-    # Ensure dates work correctly
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
 
-    # Convert price columns to numbers
     if "item_price" in df.columns:
         df["item_price"] = pd.to_numeric(df["item_price"], errors="coerce").fillna(0)
+    else:
+        df["item_price"] = 0.0
 
     if "allocated_price" in df.columns:
-        df["allocated_price"] = pd.to_numeric(
-            df["allocated_price"], errors="coerce"
-        )
-
-        # If allocated_price exists but is blank for old rows, fall back to item_price
-        df["dashboard_amount"] = df["allocated_price"].fillna(df.get("item_price", 0))
+        df["allocated_price"] = pd.to_numeric(df["allocated_price"], errors="coerce")
+        df["dashboard_amount"] = df["allocated_price"].fillna(df["item_price"])
     else:
-        df["dashboard_amount"] = df.get("item_price", 0)
+        df["dashboard_amount"] = df["item_price"]
 
     df["dashboard_amount"] = pd.to_numeric(
         df["dashboard_amount"], errors="coerce"
     ).fillna(0)
 
-    # Ensure expected text columns exist
     for col in ["category", "summary_group", "merchant", "item_name"]:
         if col not in df.columns:
             df[col] = "Unknown"
@@ -56,7 +51,6 @@ def render_dashboard(items_df: pd.DataFrame) -> None:
         st.info("No receipt item data available yet.")
         return
 
-    # Month filter
     if "date" in df.columns and df["date"].notna().any():
         df["month"] = df["date"].dt.to_period("M").astype(str)
         months = sorted(df["month"].dropna().unique(), reverse=True)
@@ -70,7 +64,6 @@ def render_dashboard(items_df: pd.DataFrame) -> None:
 
         month_df = df[df["month"] == selected_month].copy()
     else:
-        selected_month = "All data"
         month_df = df.copy()
 
     if month_df.empty:
@@ -83,16 +76,16 @@ def render_dashboard(items_df: pd.DataFrame) -> None:
         month_df["category"].isin(["Groceries", "Dining Out"])
         | month_df["summary_group"].eq("Food")
     ]
+
     total_food = float(food_df["dashboard_amount"].sum())
 
     groceries = float(
         month_df.loc[month_df["category"] == "Groceries", "dashboard_amount"].sum()
     )
+
     dining_out = float(
         month_df.loc[month_df["category"] == "Dining Out", "dashboard_amount"].sum()
     )
-
-    unique_merchants = month_df["merchant"].nunique()
 
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Total spent", f"${total_spent:,.2f}")
@@ -101,13 +94,12 @@ def render_dashboard(items_df: pd.DataFrame) -> None:
     c4.metric("Dining out", f"${dining_out:,.2f}")
 
     st.caption(
-        "Dashboard totals use `allocated_price` when available, so item category totals "
-        "add up to the final charged receipt total instead of the pre-tax/pre-discount subtotal."
+        "Dashboard totals use allocated receipt amounts when available, so spending reflects "
+        "the final charged amount instead of only the pre-tax or pre-discount subtotal."
     )
 
     st.divider()
 
-    # Category totals
     st.subheader("Spending by category")
     category_totals = (
         month_df.groupby("category", as_index=False)["dashboard_amount"]
@@ -125,7 +117,6 @@ def render_dashboard(items_df: pd.DataFrame) -> None:
         use_container_width=True,
     )
 
-    # Summary group totals
     st.subheader("Spending by summary group")
     group_totals = (
         month_df.groupby("summary_group", as_index=False)["dashboard_amount"]
@@ -138,7 +129,6 @@ def render_dashboard(items_df: pd.DataFrame) -> None:
         use_container_width=True,
     )
 
-    # Merchant totals
     st.subheader("Spending by merchant")
     merchant_totals = (
         month_df.groupby("merchant", as_index=False)["dashboard_amount"]
@@ -151,7 +141,6 @@ def render_dashboard(items_df: pd.DataFrame) -> None:
         use_container_width=True,
     )
 
-    # Weekly trend
     if "date" in month_df.columns and month_df["date"].notna().any():
         st.subheader("Weekly spending trend")
 
@@ -169,7 +158,6 @@ def render_dashboard(items_df: pd.DataFrame) -> None:
             use_container_width=True,
         )
 
-    # Top items
     st.subheader("Largest item-level charges")
     top_items = month_df.sort_values("dashboard_amount", ascending=False).head(10)
 
@@ -188,7 +176,7 @@ def render_dashboard(items_df: pd.DataFrame) -> None:
         top_items[existing_cols].rename(
             columns={
                 "item_price": "original_item_price",
-                "dashboard_amount": "dashboard_amount_allocated",
+                "dashboard_amount": "allocated_dashboard_amount",
             }
         ),
         use_container_width=True,
@@ -196,6 +184,6 @@ def render_dashboard(items_df: pd.DataFrame) -> None:
 
     st.divider()
 
-    st.subheader("AI-style monthly summary")
+    st.subheader("Monthly summary")
     summary = build_monthly_summary(month_df, amount_column="dashboard_amount")
     st.write(summary)

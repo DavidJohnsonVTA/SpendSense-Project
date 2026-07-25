@@ -12,12 +12,12 @@ def build_monthly_summary(
     amount_column: str = "item_price",
 ) -> str:
     """
-    Build a simple monthly spending summary.
+    Builds a simple monthly spending summary.
 
-    amount_column lets the dashboard use allocated_price/dashboard_amount
-    instead of raw item_price, so totals reflect the final charged receipt amount.
+    amount_column allows the dashboard to use dashboard_amount or allocated_price
+    instead of raw item_price. This matters because raw item prices often add up
+    to a subtotal, while allocated_price can reflect the final charged receipt total.
     """
-
     if items_df is None or items_df.empty:
         return "No spending data is available yet."
 
@@ -39,48 +39,28 @@ def build_monthly_summary(
     total_spent = float(df[amount_column].sum())
 
     category_totals = (
-        df.groupby("category")[amount_column]
-        .sum()
-        .sort_values(ascending=False)
+        df.groupby("category")[amount_column].sum().sort_values(ascending=False)
     )
 
     merchant_totals = (
-        df.groupby("merchant")[amount_column]
-        .sum()
-        .sort_values(ascending=False)
+        df.groupby("merchant")[amount_column].sum().sort_values(ascending=False)
     )
 
-    groceries = float(
-        df.loc[df["category"] == "Groceries", amount_column].sum()
-    )
-
-    dining_out = float(
-        df.loc[df["category"] == "Dining Out", amount_column].sum()
-    )
-
+    groceries = float(df.loc[df["category"] == "Groceries", amount_column].sum())
+    dining_out = float(df.loc[df["category"] == "Dining Out", amount_column].sum())
     total_food = groceries + dining_out
 
-    largest_category = (
-        category_totals.index[0] if not category_totals.empty else "Unknown"
-    )
-
+    largest_category = category_totals.index[0] if not category_totals.empty else "Unknown"
     largest_category_amount = (
         float(category_totals.iloc[0]) if not category_totals.empty else 0.0
     )
 
-    top_merchant = (
-        merchant_totals.index[0] if not merchant_totals.empty else "Unknown"
-    )
-
+    top_merchant = merchant_totals.index[0] if not merchant_totals.empty else "Unknown"
     top_merchant_amount = (
         float(merchant_totals.iloc[0]) if not merchant_totals.empty else 0.0
     )
 
-    receipt_count = (
-        df["receipt_id"].nunique()
-        if "receipt_id" in df.columns
-        else len(df)
-    )
+    receipt_count = df["receipt_id"].nunique() if "receipt_id" in df.columns else len(df)
 
     lines = [
         f"You spent {_money(total_spent)} across {receipt_count} receipt(s) in this view.",
@@ -89,7 +69,7 @@ def build_monthly_summary(
         f"Your highest-spend merchant was {top_merchant} at {_money(top_merchant_amount)}.",
     ]
 
-    if len(category_totals) > 0:
+    if not category_totals.empty:
         top_categories = category_totals.head(3)
         category_text = ", ".join(
             f"{category}: {_money(float(amount))}"

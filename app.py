@@ -8,24 +8,26 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from src.ai_extract import extract_receipt_from_image, demo_receipt
+from src.ai_extract import demo_receipt, extract_receipt_from_image
 from src.categorize import categorize_item, load_rules
 from src.dashboard import render_dashboard
-from src.schema import CATEGORIES
-from src.storage import load_items, load_receipts, save_receipt
-from src.validate import validate_receipt_totals
 from src.google_sheets_storage import (
     append_receipt,
     append_receipt_items,
-    read_receipts,
     read_receipt_items,
+    read_receipts,
 )
+from src.schema import CATEGORIES
+from src.storage import load_items, load_receipts, save_receipt
+from src.validate import validate_receipt_totals
+
 
 st.set_page_config(page_title="SpendSense", page_icon="🧾", layout="wide")
 st.title("SpendSense: AI Receipt Scanner & Expense Dashboard")
 st.caption(
     "Upload receipts, review extracted items, save categorized expenses, and track monthly spending."
 )
+
 
 with st.sidebar:
     st.header("Build stages")
@@ -60,15 +62,19 @@ with st.sidebar:
 
         st.success("Local CSV cache cleared. Reboot or refresh the app.")
 
+
 upload_tab, dashboard_tab, data_tab = st.tabs(
     ["Scan receipt", "Dashboard", "Saved data"]
 )
 
+
 with upload_tab:
     st.header("1. Upload a receipt")
+
     uploaded_file = st.file_uploader(
         "Choose a receipt image",
         type=["png", "jpg", "jpeg", "webp"],
+        key="receipt_file_uploader",
     )
 
     if uploaded_file:
@@ -103,43 +109,57 @@ with upload_tab:
         st.header("2. Review receipt details")
 
         c1, c2, c3 = st.columns(3)
+
         receipt["merchant"] = c1.text_input(
             "Merchant",
             receipt.get("merchant", "Unknown Merchant"),
+            key="receipt_merchant_input",
         )
+
         receipt["date"] = c2.text_input(
             "Date YYYY-MM-DD",
             receipt.get("date") or "",
+            key="receipt_date_input",
         )
+
         receipt["payment_method"] = c3.text_input(
             "Payment method",
             receipt.get("payment_method") or "",
+            key="receipt_payment_method_input",
         )
 
         c4, c5, c6, c7 = st.columns(4)
+
         receipt["subtotal"] = c4.number_input(
             "Subtotal",
             min_value=0.0,
             value=float(receipt.get("subtotal", 0) or 0),
             step=0.01,
+            key="receipt_subtotal_input",
         )
+
         receipt["tax"] = c5.number_input(
             "Tax",
             min_value=0.0,
             value=float(receipt.get("tax", 0) or 0),
             step=0.01,
+            key="receipt_tax_input",
         )
+
         receipt["tip"] = c6.number_input(
             "Tip",
             min_value=0.0,
             value=float(receipt.get("tip", 0) or 0),
             step=0.01,
+            key="receipt_tip_input",
         )
+
         receipt["total"] = c7.number_input(
-            "Total",
+            "Total charged",
             min_value=0.0,
             value=float(receipt.get("total", 0) or 0),
             step=0.01,
+            key="receipt_total_input",
         )
 
         st.header("3. Review and edit item categories")
@@ -202,6 +222,20 @@ with upload_tab:
         for warning in warnings:
             st.warning(warning)
 
+        item_subtotal_preview = float(
+            pd.to_numeric(edited_df["item_price"], errors="coerce").fillna(0).sum()
+            if not edited_df.empty and "item_price" in edited_df.columns
+            else 0
+        )
+
+        receipt_total_preview = float(receipt.get("total", 0) or 0)
+
+        if item_subtotal_preview > 0 and receipt_total_preview > 0:
+            st.info(
+                f"Dashboard allocation preview: item subtotal ${item_subtotal_preview:,.2f} "
+                f"will be allocated to final charged total ${receipt_total_preview:,.2f}."
+            )
+
         save_disabled = edited_df.empty
 
         if st.button(
@@ -211,10 +245,8 @@ with upload_tab:
         ):
             image_name = uploaded_file.name if uploaded_file else "demo"
 
-            # Save locally to CSV first
             receipt_id = save_receipt(receipt, edited_df, image_name)
 
-            # Build receipt row for Google Sheets
             receipt_row = {
                 "receipt_id": receipt_id,
                 "date": receipt.get("date", ""),
@@ -229,10 +261,14 @@ with upload_tab:
                 "created_at": pd.Timestamp.now().isoformat(),
             }
 
-            # Build item rows for Google Sheets
             item_rows = []
 
-            item_subtotal = float(edited_df["item_price"].sum() or 0)
+            item_subtotal = float(
+                pd.to_numeric(edited_df["item_price"], errors="coerce")
+                .fillna(0)
+                .sum()
+            )
+
             receipt_total = float(receipt.get("total", 0) or 0)
 
             if item_subtotal > 0 and receipt_total > 0:
@@ -244,8 +280,6 @@ with upload_tab:
                 item_price = float(item.get("item_price", 0) or 0)
                 allocated_price = round(item_price * allocation_factor, 2)
 
-
-            for index, item in edited_df.reset_index(drop=True).iterrows():
                 item_rows.append(
                     {
                         "item_id": f"{receipt_id}-{index + 1}",
@@ -253,7 +287,7 @@ with upload_tab:
                         "date": receipt.get("date", ""),
                         "merchant": receipt.get("merchant", "Unknown Merchant"),
                         "item_name": item.get("item_name", "Unknown Item"),
-                        "item_price": float(item.get("item_price", 0) or 0),
+                        "item_price": item_price,
                         "category": item.get("category", "Miscellaneous"),
                         "summary_group": item.get("summary_group", "Other"),
                         "confidence": float(item.get("confidence", 0.5) or 0.5),
@@ -262,7 +296,6 @@ with upload_tab:
                     }
                 )
 
-            # Save externally to Google Sheets
             try:
                 append_receipt(receipt_row)
                 append_receipt_items(item_rows)
@@ -277,6 +310,7 @@ with upload_tab:
                 )
 
             del st.session_state["receipt"]
+
 
 with dashboard_tab:
     if data_source == "Google Sheets":
@@ -295,6 +329,7 @@ with dashboard_tab:
 
     else:
         render_dashboard(load_items(use_sample_if_empty=True))
+
 
 with data_tab:
     if data_source == "Google Sheets":
