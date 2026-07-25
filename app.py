@@ -96,14 +96,8 @@ with upload_tab:
             st.warning(warning)
 
         save_disabled = edited_df.empty
-        if st.button("Save approved receipt", disabled=save_disabled):
-            image_name = uploaded_file.name if uploaded_file else "demo"
-            receipt_id = save_receipt(receipt, edited_df, image_name)
-            st.success(f"Saved receipt {receipt_id}. Open the Dashboard tab to see updated totals.")
-            del st.session_state["receipt"]
 
-
-        if st.button("Save approved receipt", disabled=save_disabled):
+        if st.button("Save approved receipt", disabled=save_disabled, key="save_approved_receipt_upload_tab"):
             image_name = uploaded_file.name if uploaded_file else "demo"
 
             # Save locally to CSV first
